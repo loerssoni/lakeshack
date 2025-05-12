@@ -16,6 +16,7 @@ The relevant code is pretty included under dags/deploy
     * schema.json - read in extract to ensure data conforms to predefined schema
     * extract.py
 * dags/deploy/dags/dwh_fina/transform contains
+    * transforms_samples.ipynb which contains duckdb SQL showing a couple of very basic ideas on how to report on this data
     * transform.py which has some boilerplate
 
 ### General principle
@@ -77,16 +78,12 @@ A couple of bells and whistles are included:
     * Here we just (over)write parquet, but we might as well do 
 
 #### Transforms
-For transform the idea is to continue to use Spark SQL but this is not fully implemented
+For transform the idea is to continue to use Spark SQL but this is not fully implemented, instead we demonstrate via dags/deploy/dags/dwh_fina/transforms_samples.ipynb with duckdb sql.
 
-Main idea here I think is to take two perspectives an do separate models: The user perspective and the resource perspective.
-
-Some main ideas have been demonstrated  in the notebook under the dwh_fina.
-
-* Prior to transfgormation
+Main thing here I think is to take two perspectives an do separate models: The user perspective and the resource perspective.
 
 A few notes:
-* The data here is simple, and we would benefit from having various other sources to complement. 
+* The data here is simple, and we would benefit from having various other sources to complement, there are not really all that exciting things to do in terms of pure reporting
 * We could either do this as a full truncate each time, or as a merge
     * Merge would require an iceberg or deltalake table format and we should pass some info about what files were loaded in this DAG run via XCOM
 * Usually I'd like to keep the transform step decoupled from the extract entirely
