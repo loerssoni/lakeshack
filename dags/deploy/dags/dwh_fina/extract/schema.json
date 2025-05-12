@@ -1,0 +1,18 @@
+{
+  "fields": [
+    { "name": "timestamp", "type": "timestamp", "nullable": true },
+    { "name": "resource_id", "type": "string", "nullable": true },
+    { "name": "user_id", "type": "integer", "nullable": true },
+    { "name": "credit_usage", "type": "double", "nullable": true },
+    { "name": "region", "type": "string", "nullable": true },
+    { "name": "service_tier", "type": "string", "nullable": true },
+    { "name": "operation_type", "type": "string", "nullable": true },
+    { "name": "success", "type": "boolean", "nullable": true },
+    { "name": "resource_type", "type": "string", "nullable": true },
+    { "name": "invoice_id", "type": "string", "nullable": true },
+    { "name": "currency", "type": "string", "nullable": true },
+    { "name": "year", "type": "integer", "nullable": true },
+    { "name": "month", "type": "integer", "nullable": true },
+    { "name": "day", "type": "integer", "nullable": true }
+  ]
+}

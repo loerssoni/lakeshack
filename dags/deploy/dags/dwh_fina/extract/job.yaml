@@ -1,0 +1,66 @@
+apiVersion: sparkoperator.k8s.io/v1beta2
+kind: SparkApplication
+metadata:
+  name: dwh-fina-extract
+  namespace: airflow
+spec:
+  type: Python
+  pythonVersion: "3"
+  mode: cluster
+  image: europe-west1-docker.pkg.dev/lakeshack-dev/spark-custom-images/spark:latest
+  imagePullPolicy: Always
+  sparkConf:
+    spark.jars.ivy: /tmp/ivy
+    spark.jars: https://storage.googleapis.com/hadoop-lib/gcs/gcs-connector-hadoop3-latest.jar
+  hadoopConf:
+    "fs.AbstractFileSystem.gs.impl": "com.google.cloud.hadoop.fs.gcs.GoogleHadoopFileSystem"
+    "fs.gs.project.id": "lakeshack-dev"
+    "fs.gs.system.bucket": "lakeshack-dev-airflow"
+    "google.cloud.auth.service.account.enable": "true"
+    "google.cloud.auth.service.account.json.keyfile": "/etc/secrets/key.json"
+
+  mainApplicationFile: local:///var/airflow/dags/dwh_fina/extract/extract.py
+  sparkVersion: 3.5.5
+  volumes:
+    - name: dags-volume
+      persistentVolumeClaim:
+        claimName: airflow-dags-pvc
+    - name: gcp-sa-volume
+      secret:
+        secretName: gcp-sa-key
+    - name: ivy-cache
+      emptyDir: {}
+  driver:
+    cores: 1
+    memory: 2048m
+    serviceAccount: spark-operator-spark
+    volumeMounts:
+      - name: dags-volume
+        mountPath: /var/airflow/dags
+      - name: gcp-sa-volume
+        mountPath: /etc/secrets
+      - name: ivy-cache
+        mountPath: /home/spark/.ivy2
+    labels:
+      type: driver
+    envVars:
+      GCS_PROJECT_ID: lakeshack-dev
+
+  executor:
+    instances: 1
+    cores: 1
+    memory: 4096m
+    volumeMounts:
+      - name: dags-volume
+        mountPath: /var/airflow/dags
+      - name: gcp-sa-volume
+        mountPath: /etc/secrets
+      - name: ivy-cache
+        mountPath: /home/spark/.ivy2
+    labels:
+      type: executor
+    envVars:
+      GCS_PROJECT_ID: lakeshack-dev
+  
+  # arguments:
+  #   - "--"

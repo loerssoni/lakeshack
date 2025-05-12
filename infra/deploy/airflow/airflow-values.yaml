@@ -1,0 +1,219 @@
+########################################
+## CONFIG | Airflow Configs
+## https://github.com/airflow-helm/charts/blob/main/charts/airflow/examples/google-gke/custom-values.yaml
+########################################
+airflow:
+  legacyCommands: false
+
+  image:
+    repository: europe-west1-docker.pkg.dev/lakeshack-dev/airflow-custom-images/airflow-custom
+    tag: 0.0.1
+    pullPolicy: Always
+
+  executor: KubernetesExecutor
+
+  config:
+    AIRFLOW__WEBSERVER__EXPOSE_CONFIG: false
+    AIRFLOW__CORE__LOAD_EXAMPLES: false
+
+    ## remote log storage
+    AIRFLOW__LOGGING__REMOTE_LOGGING: true
+    AIRFLOW__LOGGING__REMOTE_BASE_LOG_FOLDER: gs://lakeshack-dev-airflow/airflow/logs
+    AIRFLOW__LOGGING__REMOTE_LOG_CONN_ID: "gcp_default"
+
+    ## plugins
+    AIRFLOW__CORE__PLUGINS_FOLDER: "/var/airflow/plugins"
+
+airflow:
+  users:
+    - username: admin
+      role: Admin
+      firstName: admin
+      lastName: admin
+      
+      password: ${ADMIN_PASSWORD}
+      email: ${ADMIN_EMAIL}
+
+  usersTemplates:
+
+    ADMIN_PASSWORD:
+      kind: secret
+      name: airflow-credentials
+      key: admin_password
+      
+    ADMIN_EMAIL:
+      kind: secret
+      name: airflow-credentials
+      key: admin_email
+
+  usersUpdate: false
+
+  connections:
+    - id: gcp_default
+      type: google_cloud_platform
+      description: Defaults GCP connection
+      extra: |-
+        { 
+          "extra__google_cloud_platform__num_retries": "5" 
+        }
+        
+    - id: kubernetes_default
+      type: kubernetes
+
+  connectionsUpdate: false
+
+  variables:
+    - key: "env"
+      value: "dev"
+
+  extraEnv:
+    - name: AIRFLOW__CORE__FERNET_KEY
+      valueFrom:
+        secretKeyRef:
+          name: airflow-credentials
+          key: airflow_fernet_key
+
+    - name: AIRFLOW__WEBSERVER__SECRET_KEY
+      valueFrom:
+        secretKeyRef:
+          name: airflow-credentials
+          key: airflow_webserver_secret
+
+scheduler:
+  replicas: 1
+
+  resources:
+    requests:
+      cpu: "500m"
+      memory: "256Mi"
+
+  logCleanup:
+    enabled: true
+    retentionMinutes: 21600
+
+    resources:
+      requests:
+        cpu: "10m"
+        memory: "32Mi"
+
+  livenessProbe:
+    enabled: true
+
+    taskCreationCheck:
+      enabled: false
+      thresholdSeconds: 300
+      schedulerAgeBeforeCheck: 180
+
+web:
+  ## the number of web Pods to run
+  replicas: 1
+
+  ## resource requests/limits for the web Pods
+  ## [SPEC] https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.29/#resourcerequirements-v1-core
+  resources:
+    requests:
+      cpu: "100m"
+      memory: "512Mi"
+
+  ## configs for the Service of the web Pods
+  service:
+    type: LoadBalancer
+    externalPort: 443
+    loadBalancerIP: 10.132.0.6
+    loadBalancerSourceRanges: []
+    annotations:
+      cloud.google.com/load-balancer-type: "Internal"
+
+  ## configs generating the `webserver_config.py` file
+  ## [FAQ] https://github.com/airflow-helm/charts/blob/main/charts/airflow/docs/faq/configuration/airflow-configs.md#webserver_configpy
+  webserverConfig:
+    ## the full content of the `webserver_config.py` file (as a string)
+    stringOverride: |
+      from airflow import configuration as conf
+      from flask_appbuilder.security.manager import AUTH_DB
+      
+      # the SQLAlchemy connection string
+      SQLALCHEMY_DATABASE_URI = conf.get("core", "SQL_ALCHEMY_CONN")
+      
+      # use embedded DB for auth
+      AUTH_TYPE = AUTH_DB
+
+
+workers:
+  enabled: true
+  replicas: 2
+
+  resources:
+    requests:
+      cpu: "256m"
+      memory: "2Gi"
+
+  podDisruptionBudget:
+    enabled: true
+    maxUnavailable: "20%"
+
+  logCleanup:
+    enabled: true
+    retentionMinutes: 21600
+
+    resources:
+      requests:
+        cpu: "10m"
+        memory: "32Mi"
+
+triggerer:
+  enabled: false
+
+flower:
+  enabled: false
+
+###################################
+## CONFIG | Airflow Logs
+###################################
+logs:
+  path: /opt/airflow/logs
+
+  persistence:
+    enabled: false
+
+dags:
+  ## the airflow dags folder
+  path: /var/airflow/dags
+
+  ## configs for the dags PVC
+  persistence:
+    enabled: true
+    existingClaim: airflow-dags-pvc
+    accessMode: ReadWriteMany
+    mountPath: /var/airflow/dags
+
+serviceAccount:
+  create: true
+  name: "airflow"
+
+  annotations:
+    iam.gke.io/gcp-service-account: "airflow-kubernetes@lakeshack-dev.iam.gserviceaccount.com"
+
+extraManifests: []
+
+
+postgresql:
+  enabled: false
+
+externalDatabase:
+  type: postgres
+
+  ## the address of the external database
+  host: 10.20.176.6
+  port: 5432
+
+  ## the database which will contain the airflow tables
+  database: airflow
+
+  ## the name of a pre-created secret containing the external database user
+  userSecret: "airflow-credentials"
+  userSecretKey: "postgres_username"
+
+  ## the name of a pre-created secret containing the external database password
+  passwordSecret: "airflow-credentials"
+  passwordSecretKey: "postgres_password"

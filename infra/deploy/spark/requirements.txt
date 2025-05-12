@@ -1,0 +1,4 @@
+PyArrow >= 4.0.0
+pandas
+pyyaml
+pytz
