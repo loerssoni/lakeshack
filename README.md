@@ -7,6 +7,8 @@ The dataset is a collection of CSV files with Hive partitioning. Please create a
 
 ### Outputs
 
+![](concept.png?raw=true)
+
 The relevant code is pretty included under dags/deploy
 * The Airflow DAG used as a base for the orchestration is defined in dags/deploy/dags/dwh_fina.py
 * dags/deploy/dags/dwh_fina/extract contains
